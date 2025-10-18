@@ -389,6 +389,8 @@ export const en = {
         agent: {
             claude: 'Claude',
             codex: 'Codex',
+            gemini: 'Gemini',
+            qwen: 'Qwen',
         },
         model: {
             title: 'MODEL',

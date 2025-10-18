@@ -849,8 +849,8 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
                                             : props.agentType === 'codex' 
                                                 ? t('agentInput.agent.codex') 
                                                 : props.agentType === 'gemini' 
-                                                    ? 'Gemini' 
-                                                    : 'Qwen'
+                                                    ? t('agentInput.agent.gemini') 
+                                                    : t('agentInput.agent.qwen')
                                     </Text>
                                 </Pressable>
                             )}
