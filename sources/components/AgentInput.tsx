@@ -56,7 +56,7 @@ interface AgentInputProps {
     };
     alwaysShowContextSize?: boolean;
     onFileViewerPress?: () => void;
-    agentType?: 'claude' | 'codex';
+    agentType?: 'claude' | 'codex' | 'gemini' | 'qwen';
     onAgentClick?: () => void;
     machineName?: string | null;
     onMachineClick?: () => void;
@@ -291,8 +291,19 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
 
     const hasText = props.value.trim().length > 0;
     
-    // Check if this is a Codex session
-    const isCodex = props.metadata?.flavor === 'codex';
+    // Determine current service flavor (from session metadata if available, otherwise from new-session agentType)
+    const serviceFlavor = (props.metadata?.flavor as any) || (props.agentType as any) || 'claude';
+    const isCodex = serviceFlavor === 'codex';
+    const isGeminiFlavor = serviceFlavor === 'gemini';
+    const isQwenFlavor = serviceFlavor === 'qwen';
+    // Services that use Codex-style permission modes (read-only/safe-yolo/yolo)
+    const isAltPermissionService = isCodex || isGeminiFlavor || isQwenFlavor;
+    // Compute model options list based on service
+    const modelOptions = isCodex
+        ? (['gpt-5-codex-high', 'gpt-5-codex-medium', 'gpt-5-codex-low', 'default', 'gpt-5-minimal', 'gpt-5-low', 'gpt-5-medium', 'gpt-5-high'] as const)
+        : ((isGeminiFlavor || isQwenFlavor)
+            ? (['default'] as const)
+            : (['default', 'adaptiveUsage', 'sonnet', 'opus'] as const));
 
     // Calculate context warning
     const contextWarning = props.usageData?.contextSize
@@ -452,7 +463,7 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
             }
             // Handle Shift+Tab for permission mode switching
             if (event.key === 'Tab' && event.shiftKey && props.onPermissionModeChange) {
-                const modeOrder: PermissionMode[] = isCodex
+                const modeOrder: PermissionMode[] = isAltPermissionService
                     ? ['default', 'read-only', 'safe-yolo', 'yolo']
                     : ['default', 'acceptEdits', 'plan', 'bypassPermissions'];
                 const currentIndex = modeOrder.indexOf(props.permissionMode || 'default');
@@ -476,7 +487,9 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
                 e.preventDefault();
                 const modelOrder: ModelMode[] = isCodex
                     ? ['gpt-5-codex-high', 'gpt-5-codex-medium', 'gpt-5-codex-low', 'default']
-                    : ['default', 'adaptiveUsage', 'sonnet', 'opus'];
+                    : ((isGeminiFlavor || isQwenFlavor)
+                        ? ['default']
+                        : ['default', 'adaptiveUsage', 'sonnet', 'opus']);
                 const currentIndex = modelOrder.indexOf(props.modelMode || (isCodex ? 'gpt-5-codex-high' : 'default'));
                 const nextIndex = (currentIndex + 1) % modelOrder.length;
                 props.onModelModeChange(modelOrder[nextIndex]);
@@ -533,9 +546,9 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
                                 {/* Permission Mode Section */}
                                 <View style={styles.overlaySection}>
                                     <Text style={styles.overlaySectionTitle}>
-                                        {isCodex ? t('agentInput.codexPermissionMode.title') : t('agentInput.permissionMode.title')}
+                                        {isAltPermissionService ? t('agentInput.codexPermissionMode.title') : t('agentInput.permissionMode.title')}
                                     </Text>
-                                    {(isCodex 
+                                    {(isAltPermissionService 
                                         ? (['default', 'read-only', 'safe-yolo', 'yolo'] as const)
                                         : (['default', 'acceptEdits', 'plan', 'bypassPermissions'] as const)
                                     ).map((mode) => {
@@ -616,10 +629,7 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
                                     }}>
                                         {isCodex ? t('agentInput.codexModel.title') : t('agentInput.model.title')}
                                     </Text>
-                                    {(isCodex 
-                                        ? (['gpt-5-codex-high', 'gpt-5-codex-medium', 'gpt-5-codex-low', 'default', 'gpt-5-minimal', 'gpt-5-low', 'gpt-5-medium', 'gpt-5-high'] as const)
-                                        : (['default', 'adaptiveUsage', 'sonnet', 'opus'] as const)
-                                    ).map((model) => {
+                                    {modelOptions.map((model) => {
                                         const modelConfig = isCodex ? {
                                             'gpt-5-codex-high': { label: t('agentInput.codexModel.gpt5CodexHigh') },
                                             'gpt-5-codex-medium': { label: t('agentInput.codexModel.gpt5CodexMedium') },
@@ -834,7 +844,13 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
                                         fontWeight: '600',
                                         ...Typography.default('semiBold'),
                                     }}>
-                                        {props.agentType === 'claude' ? t('agentInput.agent.claude') : t('agentInput.agent.codex')}
+                                        {props.agentType === 'claude' 
+                                            ? t('agentInput.agent.claude') 
+                                            : props.agentType === 'codex' 
+                                                ? t('agentInput.agent.codex') 
+                                                : props.agentType === 'gemini' 
+                                                    ? t('agentInput.agent.gemini') 
+                                                    : t('agentInput.agent.qwen')
                                     </Text>
                                 </Pressable>
                             )}

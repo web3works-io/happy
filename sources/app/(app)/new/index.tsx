@@ -212,13 +212,13 @@ function NewSessionScreen() {
     // Agent selection
     //
 
-    const [agentType, setAgentType] = React.useState<'claude' | 'codex'>(() => {
+    const [agentType, setAgentType] = React.useState<'claude' | 'codex' | 'gemini' | 'qwen'>(() => {
         // Check if agent type was provided in temp data
         if (tempSessionData?.agentType) {
             return tempSessionData.agentType;
         }
         // Initialize with last used agent if valid, otherwise default to 'claude'
-        if (lastUsedAgent === 'claude' || lastUsedAgent === 'codex') {
+        if (lastUsedAgent === 'claude' || lastUsedAgent === 'codex' || lastUsedAgent === 'gemini' || lastUsedAgent === 'qwen') {
             return lastUsedAgent;
         }
         return 'claude';
@@ -226,7 +226,9 @@ function NewSessionScreen() {
 
     const handleAgentClick = React.useCallback(() => {
         setAgentType(prev => {
-            const newAgent = prev === 'claude' ? 'codex' : 'claude';
+            const order: Array<'claude' | 'codex' | 'gemini' | 'qwen'> = ['claude', 'codex', 'gemini', 'qwen'];
+            const idx = order.indexOf(prev);
+            const newAgent = order[(idx + 1) % order.length];
             // Save the new selection immediately
             sync.applySettings({ lastUsedAgent: newAgent });
             return newAgent;
@@ -240,12 +242,13 @@ function NewSessionScreen() {
     const [permissionMode, setPermissionMode] = React.useState<PermissionMode>(() => {
         // Initialize with last used permission mode if valid, otherwise default to 'default'
         const validClaudeModes: PermissionMode[] = ['default', 'acceptEdits', 'plan', 'bypassPermissions'];
-        const validCodexModes: PermissionMode[] = ['default', 'read-only', 'safe-yolo', 'yolo'];
+        const validAltModes: PermissionMode[] = ['default', 'read-only', 'safe-yolo', 'yolo'];
 
         if (lastUsedPermissionMode) {
-            if (agentType === 'codex' && validCodexModes.includes(lastUsedPermissionMode as PermissionMode)) {
+            const isAlt = agentType === 'codex' || agentType === 'gemini' || agentType === 'qwen';
+            if (isAlt && validAltModes.includes(lastUsedPermissionMode as PermissionMode)) {
                 return lastUsedPermissionMode as PermissionMode;
-            } else if (agentType === 'claude' && validClaudeModes.includes(lastUsedPermissionMode as PermissionMode)) {
+            } else if (!isAlt && validClaudeModes.includes(lastUsedPermissionMode as PermissionMode)) {
                 return lastUsedPermissionMode as PermissionMode;
             }
         }
@@ -256,11 +259,15 @@ function NewSessionScreen() {
         // Initialize with last used model mode if valid, otherwise default
         const validClaudeModes: ModelMode[] = ['default', 'adaptiveUsage', 'sonnet', 'opus'];
         const validCodexModes: ModelMode[] = ['gpt-5-codex-high', 'gpt-5-codex-medium', 'gpt-5-codex-low', 'default', 'gpt-5-minimal', 'gpt-5-low', 'gpt-5-medium', 'gpt-5-high'];
+        const validAltModes: ModelMode[] = ['default'];
 
         if (lastUsedModelMode) {
+            const isAlt = agentType === 'codex' || agentType === 'gemini' || agentType === 'qwen';
             if (agentType === 'codex' && validCodexModes.includes(lastUsedModelMode as ModelMode)) {
                 return lastUsedModelMode as ModelMode;
-            } else if (agentType === 'claude' && validClaudeModes.includes(lastUsedModelMode as ModelMode)) {
+            } else if (!isAlt && validClaudeModes.includes(lastUsedModelMode as ModelMode)) {
+                return lastUsedModelMode as ModelMode;
+            } else if (isAlt && validAltModes.includes(lastUsedModelMode as ModelMode)) {
                 return lastUsedModelMode as ModelMode;
             }
         }
@@ -273,6 +280,10 @@ function NewSessionScreen() {
             // Switch to codex-compatible modes
             setPermissionMode('default');
             setModelMode('gpt-5-codex-high');
+        } else if (agentType === 'gemini' || agentType === 'qwen') {
+            // Switch to alt provider modes
+            setPermissionMode('default');
+            setModelMode('default');
         } else {
             // Switch to claude-compatible modes
             setPermissionMode('default');
